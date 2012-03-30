@@ -1072,6 +1072,7 @@ b2DistanceJointDef = Box2D.Dynamics.Joints.b2DistanceJointDef
 # Constants
 arrowKeys = {left: 37, up: 38, right: 39, down: 40}
 wasdKeys = {a: 65, s: 83, w: 87, d: 68}
+editKeys = {shift: 16, cntl: 17}
 frameRate = 30      # Frames per second
 stickManTryToJumpForNumFrames = 6
 
@@ -1112,8 +1113,9 @@ initGamePlayDemo = () ->
 
 # Target updating at the frameRate (but assume updates are instant, so we won't quite get to the requested frameRate)
 updateWorld = () ->
-        world.update()
-        world.draw(ctx)
+        unless world.paused
+                world.update()
+                world.draw(ctx)
         after(1000/frameRate, updateWorld)
 
 # Keyboard and mouse (and later touch and accelerometer) events primarily impact
@@ -1136,6 +1138,9 @@ handleKeyDown = (evt) ->
             stickMan.running = true
             stickMan.facing = 1
             return false
+        when editKeys.shift
+            world.paused = true
+            return false
         else
             return true
 
@@ -1147,6 +1152,9 @@ handleKeyUp = (evt) ->
             stickMan.running = false
             return false
         when arrowKeys.up, wasdKeys.w
+            return false
+        when editKeys.shift
+            world.paused = false
             return false
         else
             return true
