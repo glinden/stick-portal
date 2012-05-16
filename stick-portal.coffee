@@ -109,7 +109,7 @@ class Man extends GameObj
                     if (@heldObj and someBody is @heldObj)
                         # Odd case of jumping off a box you are holding.  Release the hold.
                         world.physics.releaseStickmanHeldObj(this, @heldObj)
-                        @mouseDown = false
+                        world.mouseDown = false
             else if (@running)
                 # Accelerate the player in the direction we are facing,
                 # but do not allow the velocity to go over the maximum running
@@ -172,7 +172,7 @@ class Man extends GameObj
 
         @updateLegs()
         # On mouseDown, if near a box, pick up the box. Otherwise, shoot a portal
-        if (@mouseDown)
+        if (world.mouseDown)
             if (@heldObj)
                 world.physics.releaseStickmanHeldObj(this, @heldObj) if (@heldObj)
             else
@@ -182,7 +182,7 @@ class Man extends GameObj
                     @lastArmAngle = @armAngle
                 else
                     @shootPortal()
-            @mouseDown = false
+            world.mouseDown = false
         else if (@heldObj)
             # If the held object gets really far away, break the connection
             # And if the arm moves enough, we should adjust how the held object is held
@@ -707,6 +707,22 @@ class Portal extends GameObj
         ctx.fillRect(0, 0, @width, @width)
         ctx.restore()
 
+
+class EditWheel extends GameObj
+    constructor: (@centerX, @centerY) ->
+        @items = [
+            new Platform(@centerX-20, @centerY+10, 40, 3),
+            new Turret(@centerX-40, @centerY-30, 15, 30),
+            new Box(@centerX-15, @centerY-40, 30, 30),
+            new JumpPlate(@centerX+25, @centerY, 15)]
+
+    draw: (ctx) ->
+        ctx.save()
+        ctx.fillStyle = ctx.strokeStyle = "#777777"
+        i.draw(ctx) for i in @items
+        ctx.restore()
+
+
 class Physics
     scale: 30.0
     defaultFriction = 0.6
@@ -786,8 +802,11 @@ class Physics
         ctx.restore()
 
     update: ->
-        # Seems like this works best when steps are 1/60 or so
+        # Seems like this works best when steps are 1/60 or so, but mobile devices
+        # have weaker CPUs, so limit to 1/30 on mobile
         numIterations = 2
+        numIterations = 1 if navigator.appVersion.indexOf("Mobile") >= 0
+
         for i in [1..numIterations]
             @physicsWorld.Step(1 / (frameRate * numIterations), 10, 10)
             @physicsWorld.ClearForces()
@@ -806,8 +825,8 @@ class Physics
         stickMan.physicsBody.GetFixtureList().SetRestitution(0)
 
     addTurret: (t) ->
-        # A turret is represented in the physics sim by a box with a circle on top, like a little playmobile character
-        # This keeps the turret from being able to do odd things like stand easily on its head
+        # A turret is represented in the physics sim by a box with a circle on top, like a little playmobile
+        # character, which keeps the turret from being able to do odd things like stand easily on its head
         w = t.width / @scale / 2
         h = t.height / @scale / 2
         centerX = t.left / @scale + w
@@ -961,7 +980,10 @@ class World
                 @jumpPlates.push(new JumpPlate(65 + 455 * i,59 + 85 * j,15,1-2*i))
 
     init: () ->
-        @physics = new Physics()
+        w = 600
+        h = 400
+        t = 2 # Thickness
+        @walls = [new Wall(0,0,w,t), new Wall(0,h-t,w,t), new Wall(0,0,t,h), new Wall(w-t,0,t,h)]
         @stickMan = new Man(50,100,50,50)
         @exit = new Exit(530,290,25,40)
         @platforms = []
@@ -995,11 +1017,10 @@ class World
             else
                 @initMainLevel()
 
-        w = 600
-        h = 400
-        t = 2 # Thickness
-        @walls = [new Wall(0,0,w,t), new Wall(0,h-t,w,t), new Wall(0,0,t,h), new Wall(w-t,0,t,h)]
+        @initPhysics()
 
+    initPhysics: () ->
+        @physics = new Physics()
         @physics.addGameObj(p, false, true) for p in @platforms
         @physics.addGameObj(w, false, true) for w in @walls
         @physics.addGameObj(j, false, true) for j in @jumpPlates
@@ -1011,9 +1032,30 @@ class World
         @physics.debugInit() if (@physicsDebug)
 
     update: () ->
-        if (@resetOnNextUpdate)
+        if @editTriggered
+            if @paused
+                @paused = false
+            else
+                @paused = true
+                @init()
+            @editTriggered = false
+        if @resetOnNextUpdate
             @init()
             @resetOnNextUpdate = false
+
+        # Bring up the edit wheel if we get a mouse down when we are paused.
+        # Make it go away again on another mouse down.
+        # Also make sure edit wheel is gone if we are not paused.
+        if @paused
+            if @mouseDown
+                if @editWheel
+                    @editWheel = null
+                else
+                    @editWheel = new EditWheel(@mouseX, @mouseY)
+                @mouseDown = false
+            return
+        else
+            @editWheel = null if @editWheel
 
         # Update the physics sim.  This should come before updating game objects.
         @physics.update()
@@ -1053,9 +1095,10 @@ class World
     redraw: (ctx) ->
         # Re-draw all game objects
         x.draw(ctx) for x in [].concat(@stickMan, @exit, @boxes, @platforms, @walls, @turrets, @jumpPlates, @portals, @bullets)
+        @editWheel.draw(ctx) if (@editWheel)
 
     # TO DO: Need to write save and load functions here
-    # (is this as simple as calling toJSONString()? Might be.)
+    # (is this as simple as calling toJSONString()? Might be if you can avoid cycles.)
 
 
 # Globals
@@ -1072,7 +1115,8 @@ b2DistanceJointDef = Box2D.Dynamics.Joints.b2DistanceJointDef
 # Constants
 arrowKeys = {left: 37, up: 38, right: 39, down: 40}
 wasdKeys = {a: 65, s: 83, w: 87, d: 68}
-editKeys = {shift: 16, cntl: 17}
+modifierKeys = {shift: 16, cntl: 17}
+escKey = 27
 frameRate = 30      # Frames per second
 stickManTryToJumpForNumFrames = 6
 
@@ -1113,9 +1157,8 @@ initGamePlayDemo = () ->
 
 # Target updating at the frameRate (but assume updates are instant, so we won't quite get to the requested frameRate)
 updateWorld = () ->
-        unless world.paused
-                world.update()
-                world.draw(ctx)
+        world.update()
+        world.draw(ctx)
         after(1000/frameRate, updateWorld)
 
 # Keyboard and mouse (and later touch and accelerometer) events primarily impact
@@ -1138,9 +1181,6 @@ handleKeyDown = (evt) ->
             stickMan.running = true
             stickMan.facing = 1
             return false
-        when editKeys.shift
-            world.paused = true
-            return false
         else
             return true
 
@@ -1153,9 +1193,9 @@ handleKeyUp = (evt) ->
             return false
         when arrowKeys.up, wasdKeys.w
             return false
-        when editKeys.shift
-            world.paused = false
-            return false
+        when escKey
+            # TO DO: Disable edit mode for now, this is future work
+            # world.editTriggered = true
         else
             return true
 
@@ -1168,7 +1208,7 @@ handleMouseMove = (evt) ->
     world.mouseY = (evt.clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
 
 handleMouseDown = (evt) ->
-    world.stickMan.mouseDown = true
+    world.mouseDown = true
 
     evt.preventDefault()
     return false  # TO DO: Drop this or the line above, they are redundant.
@@ -1289,7 +1329,7 @@ handleTouchEnd = (evt) ->
         if (stickMan.touchedDuration < frameRate / 5)
             world.mouseX = x
             world.mouseY = y
-            stickMan.mouseDown = true
+            world.mouseDown = true
         if (evt.touches.length <= 1)
             # If we are ending the last touch, stop running
             stickMan.running = false
@@ -1303,7 +1343,7 @@ handleTouchEnd = (evt) ->
                 stickMan.running = false
             # Fire the portal gun if this is a brief touch in the right side, but do not change the angle
             if (x >= 300 and stickMan.touchedDuration < frameRate / 5)
-                stickMan.mouseDown = true
+                world.mouseDown = true
     else if (touchControlUI is 3)
         # Aim the portal gun at a brief touch mouse and fire
         if (stickMan.touchedDuration < frameRate / 5)
@@ -1313,7 +1353,7 @@ handleTouchEnd = (evt) ->
             if (evt.changedTouches.length > 1)
                 world.mouseX = (evt.changedTouches[1].clientX - ctx.canvas.offsetLeft) * 600 / ctx.canvas.width
                 world.mouseY = (evt.changedTouches[1].clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
-            stickMan.mouseDown = true
+            world.mouseDown = true
 
     evt.preventDefault()
     return false
