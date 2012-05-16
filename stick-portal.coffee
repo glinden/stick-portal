@@ -1,11 +1,38 @@
 
 
+# Classes for objects in the game.  Most objects are defined by top left corner, then
+# width and height.  Many objects have a physics object attached, which is its
+# representation in the physics sim that runs along side the drawing code
 
+# Base class for all game objects, just contains some utility functions and
+# a convenience call to update the location based on the physics sim for objects
+# that are in the physics sim
 class GameObj
+    constructor: (@left, @top, @width, @height, @angle = 0) ->
+
+    distance: (otherObj) ->
+        x = @left + @width / 2
+        y = @top + @height / 2
+        x2 = otherObj.left + otherObj.width / 2
+        y2 = otherObj.top + otherObj.height / 2
+        return Math.sqrt((x - x2) * (x - x2) + (y - y2) * (y - y2))
+
+    draw: (ctx) ->
+
+    update: () ->
+        if (@physicsBody)
+            # Update position and angle based on the physics simulation
+            world.physics.updateGameObjPosition(@)
+
+
+# Class to handle common code for objects that are going through a portal
+class PortalableGameObj extends GameObj
     beingPortaledMaxFrames = 4
     justPortaledFramesWait = 15
 
     constructor: (@left, @top, @width, @height, @angle = 0) ->
+        super(@left, @top, @width, @height, @angle)
+        @canBePortaled = true
 
     draw: (ctx) ->
         if (@beingPortaled)
@@ -59,22 +86,14 @@ class GameObj
                 @justPortaled = justPortaledFramesWait
                 @physicsBody.SetActive(true) if (!@exiting)
         @justPortaled-- if (@justPortaled)
-        if (@physicsBody)
-            # Update position and angle based on the physics simulation
-            world.physics.updateGameObjPosition(@)
+        super()
 
-    distance: (otherObj) ->
-        x = @left + @width / 2
-        y = @top + @height / 2
-        x2 = otherObj.left + otherObj.width / 2
-        y2 = otherObj.top + otherObj.height / 2
-        return Math.sqrt((x - x2) * (x - x2) + (y - y2) * (y - y2))
-
-class Man extends GameObj
+class Man extends PortalableGameObj
     legPos: {pass: 3, up: 2, contact: 1, V: 0}
     maxHoldDistance = 100
 
     constructor: (@left, @top, @width = 50, @height = 50) ->
+        super(@left, @top, @width, @height)
         @legs = @legPos.V
         @facing = 0        # -1 for left, 1 for right, 0 for neither
         @running = false   # Currently running
@@ -377,8 +396,9 @@ class Exit extends GameObj
                 man.physicsBody.SetActive(false)
                 @exiting = 1
 
-class Box extends GameObj
+class Box extends PortalableGameObj
     constructor: (@left, @top, @angle = 0, @width = 30, @height = 30) ->
+        super(@left, @top, @width, @height, @angle)
         @canBePickedUp = true
 
     draw: (ctx) ->
@@ -415,10 +435,11 @@ class Bullet extends GameObj
         world.bullets.remove(this)
         world.physics.physicsWorld.DestroyBody(@physicsBody)
 
-class Turret extends GameObj
+class Turret extends PortalableGameObj
     shotsPerSecond = 5
 
     constructor: (@left, @top, @facing = -1, @width = 15, @height = 30) ->
+        super(@left, @top, @width, @height)
         # Facing is -1 for left, 1 for right
         @firing = 0
         @angle = 0
@@ -595,7 +616,6 @@ class Wall extends Platform
 
 
 class Portal extends GameObj
-
     constructor: (@centerX, @centerY, @angle = 0, @isBlue = true) ->
         @width = 40
         @height = 10
@@ -663,7 +683,7 @@ class Portal extends GameObj
             # Check if a portalable object is on top of us.  If so, suck it in and eject it from the other portal
             for obj in [world.stickMan].concat(world.boxes, world.turrets)
                 objCenterX = obj.left + obj.width / 2
-                if (!obj.beingPortaled and !obj.justPortaled and !obj.exiting)
+                if (obj.canBePortaled and !obj.beingPortaled and !obj.justPortaled and !obj.exiting)
                     if (Math.abs(objCenterX - @centerX) < @width * .6)
                         objRelevantY = obj.top
                         objRelevantY += obj.height if (@onTop)
@@ -721,6 +741,16 @@ class EditWheel extends GameObj
         i.draw(ctx) for i in @items
         ctx.restore()
 
+
+
+# This is a container for the physics sim, which runs beside the drawing sim and
+# is used to update the position of objects.
+# One thing to note about this physics sim is that it refers to objects using
+# their center (x,y), then radius (or half width and height) out from that.
+# The canvas wants top left corner and then width and height from that, so
+# there's conversions all over the place to map between the two.
+# TO DO: Is there a better way to do this?  If you aggressively use transforms,
+# for example, can you get the canvas to use center (x,y) and use that everywhere?
 
 class Physics
     scale: 30.0
@@ -895,6 +925,10 @@ class Physics
         obj.physicsBody.SetMassData(data)
 
 
+
+# The world holds the entire simulation, all the objects in the world, how
+# to create worlds, and a pointer to the physics sim that runs beside everything
+# and updates positions of objects
 
 class World
     constructor: () ->
@@ -1168,7 +1202,8 @@ updateWorld = () ->
         world.draw(ctx)
         after(1000/frameRate, updateWorld)
 
-# Keyboard and mouse (and later touch and accelerometer) events primarily impact
+
+# Keyboard and mouse (and touch and accelerometer) events primarily impact
 # the stickMan when playing the game and selections/edits in the editor
 # Should not do heavy processing in event handlers, do most of the work in the
 # stickMan's update() and redraw() calls in the next frame
@@ -1230,6 +1265,10 @@ handleMouseDown = (evt) ->
 # Of these, (2) is the most common, but also yields a pretty lame experience.  Code for all three
 # are attempted below with a way to easily switch between them in the code.
 # [Another idea: First touch moves toward mouse, second touch aims, second brief touch fires]
+#
+# After user testing, the first of these works the best (though (3) is pretty cool, just hard
+# to control).  So, let's use the first all the time.  Keep the other code around in case
+# we change our mind.
 touchControlUI = 1
 
 handleTouchStartOrEndMethod1Helper = (evt) ->
