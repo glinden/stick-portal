@@ -74,7 +74,7 @@ class Man extends GameObj
     legPos: {pass: 3, up: 2, contact: 1, V: 0}
     maxHoldDistance = 100
 
-    constructor: (@left, @top, @width, @height) ->
+    constructor: (@left, @top, @width = 50, @height = 50) ->
         @legs = @legPos.V
         @facing = 0        # -1 for left, 1 for right, 0 for neither
         @running = false   # Currently running
@@ -325,8 +325,8 @@ class Man extends GameObj
 class Exit extends GameObj
     maxExitAnimationFrames = 25
 
-    constructor: (@left, @top, @width, @height) ->
-        super
+    constructor: (@left, @top, @width = 25, @height = 40) ->
+        super(@left, @top, @width, @height)
         @triggered = false
         @fixedRotation = true
 
@@ -378,8 +378,7 @@ class Exit extends GameObj
                 @exiting = 1
 
 class Box extends GameObj
-    constructor: (@left, @top, @width, @height) ->
-        super
+    constructor: (@left, @top, @angle = 0, @width = 30, @height = 30) ->
         @canBePickedUp = true
 
     draw: (ctx) ->
@@ -419,8 +418,8 @@ class Bullet extends GameObj
 class Turret extends GameObj
     shotsPerSecond = 5
 
-    constructor: (@left, @top, @width, @height, @facing = -1) ->
-        # @facing = -1         # -1 for left, 1 for right
+    constructor: (@left, @top, @facing = -1, @width = 15, @height = 30) ->
+        # Facing is -1 for left, 1 for right
         @firing = 0
         @angle = 0
         @shotsFired = 0
@@ -514,7 +513,7 @@ class JumpPlate extends GameObj
     # To make it easier to say where a jump plate is, you specify left bottom when creating a new one
     # rather than top left.  Different than other GameObjs, but this makes it easier to put on platforms.
     # Note that a jump plate is only 1 pixel tall for the physics system, but 5 pixels for drawing
-    constructor: (@left, @bottom, @width, @facing = -1) ->
+    constructor: (@left, @bottom, @facing = -1, @width = 15) ->
         @height = 1              # Height for physics system
         @top = @bottom - @height # Top for physics system
         @triggered = false
@@ -578,7 +577,7 @@ class JumpPlate extends GameObj
 
 
 class Platform extends GameObj
-    constructor: (@left, @top, @width, @height) ->
+    constructor: (@left, @top, @width = 100, @height = 3) ->
         @fixedRotation = true
         @fillColor = "#333333"
 
@@ -711,10 +710,10 @@ class Portal extends GameObj
 class EditWheel extends GameObj
     constructor: (@centerX, @centerY) ->
         @items = [
-            new Platform(@centerX-20, @centerY+10, 40, 3),
-            new Turret(@centerX-40, @centerY-30, 15, 30),
-            new Box(@centerX-15, @centerY-40, 30, 30),
-            new JumpPlate(@centerX+25, @centerY, 15)]
+            new Platform(@centerX-20, @centerY+10, 40),
+            new Turret(@centerX-40, @centerY-30),
+            new Box(@centerX-15, @centerY-40),
+            new JumpPlate(@centerX+25, @centerY)]
 
     draw: (ctx) ->
         ctx.save()
@@ -805,7 +804,7 @@ class Physics
         # Seems like this works best when steps are 1/60 or so, but mobile devices
         # have weaker CPUs, so limit to 1/30 on mobile
         numIterations = 2
-        numIterations = 1 if navigator.appVersion.indexOf("Mobile") >= 0
+        numIterations = 1 if @onMobile
 
         for i in [1..numIterations]
             @physicsWorld.Step(1 / (frameRate * numIterations), 10, 10)
@@ -902,90 +901,95 @@ class World
         @level = 0
         @init()
 
+    # Because of the need to scale the canvas to different window sizes in browsers and on
+    # mobile devices, there is an assumption that the world is 600 x 400 in all the code below.
+    # TO DO: This is this way mostly due to ineria, is there a cleaner way to do this? Fractional
+    # distances? That'd be ugly. Seems really unclean to use 600 x 400 as the assumed virtual
+    # canvas, but not clear there is an obvious better way.  Think about it more, please.
     initExitTutorial: () ->
 
     initPortalTutorial: () ->
-        @platforms = [new Platform(80,320,200,3), new Platform(400,80,180,3)]
-        @exit = new Exit(530,130,25,40)
+        @platforms = [new Platform(80,320,200), new Platform(400,80,180)]
+        @exit = new Exit(530,130)
 
     initBoxesTutorial: () ->
         for i in [8..10]
-            box = new Box(100 + 35 * i,50,30,30, Math.PI/10 * Math.random())
+            box = new Box(100 + 35 * i, 50, Math.PI/10 * Math.random())
             @boxes.push(box)
-        @exit = new Exit(530,240,25,40)
+        @exit = new Exit(530,240)
 
     initJumpPlatesTutorial: () ->
-        @jumpPlates = [new JumpPlate(280, 400, 15, 1)]
-        @exit = new Exit(450,140,25,40)
+        @jumpPlates = [new JumpPlate(280, 400, 1)]
+        @exit = new Exit(450,140)
 
     initTurretTutorial: () ->
-        @boxes = [new Box(300,150,30,30, 0)]
-        @turrets = [new Turret(480,360,15,30)]
+        @boxes = [new Box(300,150)]
+        @turrets = [new Turret(480,360)]
 
     initMainLevel: () ->
-        @stickMan = new Man(300,200,50,50)
-        @exit = new Exit(450,30,25,40)
-        @platforms = [new Platform(80,250,200,3), new Platform(300,320,150,3)]
-        @jumpPlates = [new JumpPlate(400,320,15), new JumpPlate(100,250,15,1), new JumpPlate(150, 400, 15, 1)]
+        @stickMan = new Man(300,200)
+        @exit = new Exit(450,30)
+        @platforms = [new Platform(80,250,200), new Platform(300,320,150)]
+        @jumpPlates = [new JumpPlate(400,320), new JumpPlate(100,250,1), new JumpPlate(150,400,1)]
         for i in [6..10]
-            box = new Box(100 + 35 * i,50,30,30, Math.PI/10 * Math.random())
+            box = new Box(100 + 35 * i,50, Math.PI/10 * Math.random())
             @boxes.push(box)
-        @turrets.push(new Turret(250,220,15,30))
+        @turrets.push(new Turret(250,220))
 
     initTerminalVelocityLevel: () ->
         # This is a test to see what happens if you have a fall from one portal to another over and over.
         # Short answer is that it does not work quite right yet, you appear to bounce off the floor
         # under one of the portals.  Maybe it is the delay before being able to portal again?
         # Maybe ignoring the delay when the velocity is high enough?
-        @platforms = [new Platform(200,320,180,3), new Platform(200,80,180,3)]
-        @jumpPlates = [new JumpPlate(20, 400, 15, 1)]
+        @platforms = [new Platform(200,320,180), new Platform(200,80,180)]
+        @jumpPlates = [new JumpPlate(20, 400, 1)]
 
     initBoxPileLevel: () ->
         for j in [1..5]
             for i in [j..10]
-                box = new Box(100 + 35 * i,35 * j,30,30, Math.PI/10 * Math.random())
+                box = new Box(100 + 35 * i,35 * j, Math.PI/10 * Math.random())
                 @boxes.push(box)
-        @exit = new Exit(530,240,25,40)
+        @exit = new Exit(530,240)
 
     initJumpJumpJumpLevel: () ->
-        @exit = new Exit(290,20,25,40)
-        @stickMan = new Man(150,100,50,50)
+        @exit = new Exit(290,20)
+        @stickMan = new Man(150,100)
         for i in [0..3]
-            @boxes.push(new Box(300,100+35*i,30,30, 0))
+            @boxes.push(new Box(300,100+35*i))
         for i in [0..1]
             for j in [0..4]
-                @platforms.push(new Platform(0 + 520 * i, 60 + 85 * j, 80, 3)) if (j isnt 4)
-                @jumpPlates.push(new JumpPlate(65 + 455 * i,59 + 85 * j,15,1-2*i))
+                @platforms.push(new Platform(0 + 520 * i, 60 + 85 * j, 80)) if (j isnt 4)
+                @jumpPlates.push(new JumpPlate(65 + 455 * i, 59 + 85 * j, 1-2*i))
 
     initJumpThroughSomeBulletsLevel: () ->
-        @exit = new Exit(290,20,25,40)
-        @stickMan = new Man(150,100,50,50)
+        @exit = new Exit(290,20)
+        @stickMan = new Man(150,100)
         for i in [0..3]
-            @boxes.push(new Box(300,100+35*i,30,30, 0))
+            @boxes.push(new Box(300,100+35*i))
         for i in [0..1]
             for j in [0..4]
-                @platforms.push(new Platform(0 + 520 * i, 60 + 85 * j, 80, 3)) if (j isnt 4)
-                @turrets.push(new Turret(15 + 555 * i,29 + 85 * j,15,30, 1-2*i)) if (j is 4)
-                @jumpPlates.push(new JumpPlate(65 + 455 * i,59 + 85 * j,15,1-2*i))
+                @platforms.push(new Platform(0 + 520 * i, 60 + 85 * j, 80)) if (j isnt 4)
+                @turrets.push(new Turret(15 + 555 * i,29 + 85 * j, 1-2*i)) if (j is 4)
+                @jumpPlates.push(new JumpPlate(65 + 455 * i, 59 + 85 * j, 1-2*i))
 
     initJumpThroughBulletsLevel: () ->
-        @exit = new Exit(290,20,25,40)
-        @stickMan = new Man(150,100,50,50)
+        @exit = new Exit(290,20)
+        @stickMan = new Man(150,100)
         for i in [0..3]
-            @boxes.push(new Box(300,100+35*i,30,30, 0))
+            @boxes.push(new Box(300,100+35*i))
         for i in [0..1]
             for j in [0..4]
-                @platforms.push(new Platform(0 + 520 * i, 60 + 85 * j, 80, 3)) if (j isnt 4)
-                @turrets.push(new Turret(15 + 555 * i,29 + 85 * j,15,30, 1-2*i))
-                @jumpPlates.push(new JumpPlate(65 + 455 * i,59 + 85 * j,15,1-2*i))
+                @platforms.push(new Platform(0 + 520 * i, 60 + 85 * j, 80)) if (j isnt 4)
+                @turrets.push(new Turret(15 + 555 * i,29 + 85 * j, 1-2*i))
+                @jumpPlates.push(new JumpPlate(65 + 455 * i, 59 + 85 * j, 1-2*i))
 
     init: () ->
-        w = 600
-        h = 400
+        w = virtualCanvasWidth
+        h = virtualCanvasHeight
         t = 2 # Thickness
         @walls = [new Wall(0,0,w,t), new Wall(0,h-t,w,t), new Wall(0,0,t,h), new Wall(w-t,0,t,h)]
-        @stickMan = new Man(50,100,50,50)
-        @exit = new Exit(530,290,25,40)
+        @stickMan = new Man(50,100)
+        @exit = new Exit(530,290)
         @platforms = []
         @jumpPlates = []
         @boxes = []
@@ -1021,6 +1025,7 @@ class World
 
     initPhysics: () ->
         @physics = new Physics()
+        @physics.onMobile = navigator.appVersion.indexOf("Mobile") >= 0
         @physics.addGameObj(p, false, true) for p in @platforms
         @physics.addGameObj(w, false, true) for w in @walls
         @physics.addGameObj(j, false, true) for j in @jumpPlates
@@ -1087,7 +1092,7 @@ class World
         h = ctx.canvas.height
         ctx.clearRect(0, 0, w, h)
         ctx.save()
-        ctx.scale(w / 600, w / 600)
+        ctx.scale(w / virtualCanvasWidth, w / virtualCanvasWidth)
         @physics.debugDraw() if (@physicsDebug)
         @redraw(ctx)
         ctx.restore()
@@ -1119,6 +1124,8 @@ modifierKeys = {shift: 16, cntl: 17}
 escKey = 27
 frameRate = 30      # Frames per second
 stickManTryToJumpForNumFrames = 6
+virtualCanvasWidth = 600
+virtualCanvasHeight = 400
 
 # Convenience functions
 after = (ms, cb) -> setTimeout cb, ms
@@ -1204,8 +1211,8 @@ handleMouseMove = (evt) ->
     # whenever the mouse moves
     # Deal with scaling the canvas for window size (assumed window width is 600 pixels, assumed ratio w:h is 3:2)
     # Also deal with translation of the canvas in the window (from trying to center it)
-    world.mouseX = (evt.clientX - ctx.canvas.offsetLeft) * 600 / ctx.canvas.width
-    world.mouseY = (evt.clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
+    world.mouseX = (evt.clientX - ctx.canvas.offsetLeft) * virtualCanvasWidth / ctx.canvas.width
+    world.mouseY = (evt.clientY - ctx.canvas.offsetTop) * virtualCanvasWidth / ctx.canvas.width
 
 handleMouseDown = (evt) ->
     world.mouseDown = true
@@ -1227,8 +1234,8 @@ touchControlUI = 1
 
 handleTouchStartOrEndMethod1Helper = (evt) ->
     stickMan = world.stickMan
-    x = (evt.touches[0].clientX - ctx.canvas.offsetLeft) * 600 / ctx.canvas.width
-    y = (evt.touches[0].clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
+    x = (evt.touches[0].clientX - ctx.canvas.offsetLeft) * virtualCanvasWidth / ctx.canvas.width
+    y = (evt.touches[0].clientY - ctx.canvas.offsetTop) * virtualCanvasWidth / ctx.canvas.width
     minBeforeMove = 10  # In pixels
     x -= stickMan.left + stickMan.width / 2
     y -= stickMan.top + stickMan.height / 2
@@ -1247,30 +1254,30 @@ handleTouchStartOrEndMethod1Helper = (evt) ->
             stickMan.running = false
     # If we have a second touch, aim the portal gun at it
     if (evt.touches.length > 1 and (evt.changedTouches.length > 1 or evt.changedTouches[0].identifier is evt.touches[1].identifier))
-        world.mouseX = (evt.touches[1].clientX - ctx.canvas.offsetLeft) * 600 / ctx.canvas.width
-        world.mouseY = (evt.touches[1].clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
+        world.mouseX = (evt.touches[1].clientX - ctx.canvas.offsetLeft) * virtualCanvasWidth / ctx.canvas.width
+        world.mouseY = (evt.touches[1].clientY - ctx.canvas.offsetTop) * virtualCanvasWidth / ctx.canvas.width
 
 handleTouchStart = (evt) ->
     stickMan = world.stickMan
 
     stickMan.touchedDuration = 1
     if (touchControlUI is 3)
-        x = (evt.changedTouches[0].clientX - ctx.canvas.offsetLeft) * 600 / ctx.canvas.width
-        y = (evt.changedTouches[0].clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
+        x = (evt.changedTouches[0].clientX - ctx.canvas.offsetLeft) * virtualCanvasWidth / ctx.canvas.width
+        y = (evt.changedTouches[0].clientY - ctx.canvas.offsetTop) * virtualCanvasWidth / ctx.canvas.width
         # Aim the portal gun at the touch
         world.mouseX = x
         world.mouseY = y
     else if (touchControlUI is 2)
         for t in evt.changedTouches
-            x = (t.clientX - ctx.canvas.offsetLeft) * 600 / ctx.canvas.width
-            y = (t.clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
-            if (x < 300)
+            x = (t.clientX - ctx.canvas.offsetLeft) * virtualCanvasWidth / ctx.canvas.width
+            y = (t.clientY - ctx.canvas.offsetTop) * virtualCanvasWidth / ctx.canvas.width
+            if (x < virtualCanvasWidth / 2)
                 if (y < 100)
                     # Jump
                     stickMan.jumping = stickManTryToJumpForNumFrames
             else
                 # Aim the portal gun, rescaling the right half of the screen to the whole screen
-                world.mouseX = (x - 300) * 2
+                world.mouseX = (x - virtualCanvasWidth / 2) * 2
                 world.mouseY = y
     else if (touchControlUI is 1)
         handleTouchStartOrEndMethod1Helper(evt)
@@ -1285,16 +1292,16 @@ handleTouchMove = (evt) ->
     # Deal with scaling the canvas for window size (assumed window width is 600 pixels, assumed ratio w:h is 3:2)
     # Also deal with translation of the canvas in the window (from trying to center it)
     if (touchControlUI is 3)
-        x = (evt.changedTouches[0].clientX - ctx.canvas.offsetLeft) * 600 / ctx.canvas.width
-        y = (evt.changedTouches[0].clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
+        x = (evt.changedTouches[0].clientX - ctx.canvas.offsetLeft) * virtualCanvasWidth / ctx.canvas.width
+        y = (evt.changedTouches[0].clientY - ctx.canvas.offsetTop) * virtualCanvasWidth / ctx.canvas.width
         world.mouseX = x
         world.mouseY = y
     else if (touchControlUI is 2)
         for t in evt.changedTouches
-            x = (t.clientX - ctx.canvas.offsetLeft) * 600 / ctx.canvas.width
-            y = (t.clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
+            x = (t.clientX - ctx.canvas.offsetLeft) * virtualCanvasWidth / ctx.canvas.width
+            y = (t.clientY - ctx.canvas.offsetTop) * virtualCanvasWidth / ctx.canvas.width
             # Touches in the left half of the screen move, touches in right half aim
-            if (x < 300)  # Assumed window width is 600, see code above
+            if (x < virtualCanvasWidth / 2)  # Assumed window width is 600, see code above
                 # First 1/6th of the screen means run left, second 1/6th means stay still, third 1/6th is run right
                 if (x < 100)
                     stickMan.running = true
@@ -1309,7 +1316,7 @@ handleTouchMove = (evt) ->
                     stickMan.jumping = stickManTryToJumpForNumFrames
             else
                 # Aim the portal gun, rescaling the right half of the screen to the whole screen
-                world.mouseX = (x - 300) * 2
+                world.mouseX = (x - virtualCanvasWidth / 2) * 2
                 world.mouseY = y
     else if (touchControlUI is 1)
         handleTouchStartOrEndMethod1Helper(evt)
@@ -1322,8 +1329,8 @@ handleTouchEnd = (evt) ->
 
     # If the touch wasn't down for long, treat this like activating the portal gun toward the
     # touch location
-    x = (evt.changedTouches[0].clientX - ctx.canvas.offsetLeft) * 600 / ctx.canvas.width
-    y = (evt.changedTouches[0].clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
+    x = (evt.changedTouches[0].clientX - ctx.canvas.offsetLeft) * virtualCanvasWidth / ctx.canvas.width
+    y = (evt.changedTouches[0].clientY - ctx.canvas.offsetTop) * virtualCanvasWidth / ctx.canvas.width
     if (touchControlUI is 1)
         # Aim the portal gun at a brief touch and fire
         if (stickMan.touchedDuration < frameRate / 5)
@@ -1336,13 +1343,13 @@ handleTouchEnd = (evt) ->
             stickMan.touchedDuration = 0
     else if (touchControlUI is 2)
         for t in evt.changedTouches
-            x = (t.clientX - ctx.canvas.offsetLeft) * 600 / ctx.canvas.width
-            y = (t.clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
+            x = (t.clientX - ctx.canvas.offsetLeft) * virtualCanvasWidth / ctx.canvas.width
+            y = (t.clientY - ctx.canvas.offsetTop) * virtualCanvasWidth / ctx.canvas.width
             # Stop running if this was on the left side
-            if (x < 300)
+            if (x < virtualCanvasWidth / 2)
                 stickMan.running = false
             # Fire the portal gun if this is a brief touch in the right side, but do not change the angle
-            if (x >= 300 and stickMan.touchedDuration < frameRate / 5)
+            if (x >= virtualCanvasWidth / 2 and stickMan.touchedDuration < frameRate / 5)
                 world.mouseDown = true
     else if (touchControlUI is 3)
         # Aim the portal gun at a brief touch mouse and fire
@@ -1351,8 +1358,8 @@ handleTouchEnd = (evt) ->
             world.mouseY = y
             # If we have a second touch, aim the portal gun at it instead
             if (evt.changedTouches.length > 1)
-                world.mouseX = (evt.changedTouches[1].clientX - ctx.canvas.offsetLeft) * 600 / ctx.canvas.width
-                world.mouseY = (evt.changedTouches[1].clientY - ctx.canvas.offsetTop) * 600 / ctx.canvas.width
+                world.mouseX = (evt.changedTouches[1].clientX - ctx.canvas.offsetLeft) * virtualCanvasWidth / ctx.canvas.width
+                world.mouseY = (evt.changedTouches[1].clientY - ctx.canvas.offsetTop) * virtualCanvasWidth / ctx.canvas.width
             world.mouseDown = true
 
     evt.preventDefault()
