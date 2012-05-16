@@ -743,18 +743,24 @@ class EditWheel extends GameObj
 
 
 
-# This is a container for the physics sim, which runs beside the drawing sim and
-# is used to update the position of objects.
-# One thing to note about this physics sim is that it refers to objects using
-# their center (x,y), then radius (or half width and height) out from that.
-# The canvas wants top left corner and then width and height from that, so
-# there's conversions all over the place to map between the two.
+# This is just a bucket to hold most of the code related to the
+# physics sim, which runs beside the drawing sim and is used to update
+# the position of objects.
+#
+# One thing to note about this physics sim is that it refers to
+# objects using their center (x,y), then radius (or half width and
+# height) out from that.  The canvas wants top left corner and then
+# width and height from that, so there's conversions all over the
+# place to map between the two.
+#
 # TO DO: Is there a better way to do this?  If you aggressively use transforms,
 # for example, can you get the canvas to use center (x,y) and use that everywhere?
 
 class Physics
-    scale: 30.0
     defaultFriction = 0.6
+    # Seems like scale shouldn't matter, but it does.  The physics sim behaves poorly
+    # at very large and very small scale.  Odd, yes, but we have to deal with it.
+    scale: 30.0
 
     constructor: () ->
         gravity = new b2Vec2(0, 20)
@@ -926,9 +932,12 @@ class Physics
 
 
 
-# The world holds the entire simulation, all the objects in the world, how
-# to create worlds, and a pointer to the physics sim that runs beside everything
-# and updates positions of objects
+# The world holds the entire simulation, all the objects in the world,
+# how to create worlds, and a pointer to the physics sim that runs
+# beside everything and updates positions of objects.
+# TO DO: Kind of Java-like to use a class for this when this is really just
+# a bucket of stuff organized together. Fine, but might be a better way of
+# doing it.
 
 class World
     constructor: () ->
@@ -1137,7 +1146,8 @@ class World
         @editWheel.draw(ctx) if (@editWheel)
 
     # TO DO: Need to write save and load functions here
-    # (is this as simple as calling toJSONString()? Might be if you can avoid cycles.)
+    # (is this as simple as calling toJSONString()? Might be if you can avoid cycles, but there
+    # are cycles in the physics stuff and between the world and physics objects)
 
 
 # Globals
