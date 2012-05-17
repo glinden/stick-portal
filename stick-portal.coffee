@@ -1,12 +1,37 @@
+###
+Released under MIT License
+Copyright (C) 2012, Greg Linden (glinden@gmail.com)
+
+Permission is hereby granted, free of charge, to any person
+obtaining a copy of this software and associated documentation files
+(the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge,
+publish, distribute, sublicense, and/or sell copies of the Software,
+and to permit persons to whom the Software is furnished to do so,
+subject to the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS
+BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+###
 
 
-# Classes for objects in the game.  Most objects are defined by top left corner, then
-# width and height.  Many objects have a physics object attached, which is its
-# representation in the physics sim that runs along side the drawing code
+# Classes for objects in the game.  Most objects are defined by top
+# left corner, then width and height.  Many objects have a physics
+# object attached, which is its representation in the physics sim that
+# runs along side the drawing code
 
-# Base class for all game objects, just contains some utility functions and
-# a convenience call to update the location based on the physics sim for objects
-# that are in the physics sim
+# Base class for all game objects, just contains some utility
+# functions and a convenience call to update the location based on the
+# physics sim for objects that are in the physics sim
 class GameObj
     constructor: (@left, @top, @width, @height, @angle = 0) ->
 
