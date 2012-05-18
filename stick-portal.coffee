@@ -1288,7 +1288,6 @@ handleMouseDown = (evt) ->
     world.mouseDown = true
 
     evt.preventDefault()
-    return false  # TO DO: Drop this or the line above, they are redundant.
 
 
 
@@ -1357,7 +1356,6 @@ handleTouchStart = (evt) ->
         handleTouchStartOrEndMethod1Helper(evt)
 
     evt.preventDefault()
-    return false
 
 handleTouchMove = (evt) ->
     stickMan = world.stickMan
@@ -1396,7 +1394,6 @@ handleTouchMove = (evt) ->
         handleTouchStartOrEndMethod1Helper(evt)
 
     evt.preventDefault()
-    return false
 
 handleTouchEnd = (evt) ->
     stickMan = world.stickMan
@@ -1437,7 +1434,6 @@ handleTouchEnd = (evt) ->
             world.mouseDown = true
 
     evt.preventDefault()
-    return false
 
 handleDeviceOrientation = (evt) ->
     return true if (touchControlUI isnt 3)
@@ -1461,7 +1457,6 @@ handleDeviceOrientation = (evt) ->
     if (upTilt < 30)
         stickMan.jumping = stickManTryToJumpForNumFrames
     evt.preventDefault()
-    return false
 
 handleOrientationChange = (evt) ->
     # This could look at window.orientation and set the CSS for the body to "-webkit-transform: rotate(90deg)"
@@ -1470,4 +1465,3 @@ handleOrientationChange = (evt) ->
     # forces on us.  Or not, we could just punt on all that and just make the experience in portrait okay
     # and experience in landscape great.  For now, let's punt on all that.
     evt.preventDefault()
-    return false
