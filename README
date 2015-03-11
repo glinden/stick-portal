@@ -1,7 +1,7 @@
 Stick Portal is playable in any browser and in mobile devices.  It is
 publicly available at
 
-http://crunchzilla.com/stick-portal
+http://www.crunchzilla.com/stick-portal
 
 The game is written in Coffescript and uses HTML5 canvas and box2Djs
 for the physics.  It is free to play and open source (MIT license).
